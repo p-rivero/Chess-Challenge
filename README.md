@@ -1,3 +1,35 @@
+# Turing's paper machine
+
+The goal of this project is to reconstruct the first chess-playing program, created by Alan Turing and David Champernowne in 1948, many years before the first computer capable of running it was built.
+Most notably, the entire program is contained in a single file (`Chess-Challenge/src/My Bot/MyBot.cs`), with a size limit of 1024 tokens (as defined in Sebastian Lague's chess coding challenge).
+
+The algorithm, known as *Turochamp* or *Turing's paper machine*, is considered to be the first computer game ever created, even though it was never actually run on a computer.
+For each move, it reportedly took Turing 15 to 20 minutes to compute the result by hand (with a depth of 3 ply).
+
+There are some open-source implementations of *Turochamp* available on [GitHub](https://github.com/topics/turochamp), as well as the original closed-source recreation by the ChessBase team, which was used as a reference for this reverse-engineering project due to being the closest to the original algorithm.
+
+## Implementation notes
+
+- Even though the Alpha-Beta search algorithm wasn't invented until 1958, 10 years after *Turochamp*, it is used in this implementation since it does not affect the algorithm's behavior and is strictly more efficient than a naive minimax search. Furthermore, there is evidence that Turing did not bother to explore moves that were obviously bad, so he was intuitively using a form of pruning.
+
+- Quiescence search is used to avoid the horizon effect. This improvement was already present in the original *Turochamp* algorithm.
+
+## Strategies used to reduce code size
+
+- Use `var` instead of explicit type declarations for generic types.
+
+- Use closures (lambdas, anonymous functions) to minimize the number of arguments passed to functions.
+
+## References
+
+[F. Friedel, G. Kasparov. *Reconstructing Turing's "Paper Machine"*. ChessBase](https://en.chessbase.com/post/reconstructing-turing-s-paper-machine)
+
+[*Turochamp*. Wikipedia, the free encyclopedia](https://en.wikipedia.org/wiki/Turochamp)
+
+---
+
+# Original README.md
+
 # Chess Coding Challenge (C#)
 Welcome to the [chess coding challenge](https://youtu.be/iScy18pVR58)! This is a friendly competition in which your goal is to create a small chess bot (in C#) using the framework provided in this repository.
 Once submissions close, these bots will battle it out to discover which bot is best!

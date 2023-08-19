@@ -125,26 +125,25 @@ public class MyBot : IChessBot
                 + AddMaterialScoreForPiece(ROOK, 500)
                 + AddMaterialScoreForPiece(QUEEN, 1000);
         };
-
         var AddPositionalScoreForCurrentPlayer = () =>
         {
             int positionalScore = 0;
             var nonPawnDefenders = NumberOfNonPawnDefenders();
             var pawnDefenders = NumberOfPawnDefenders();
 
-			// Mobility score (rules 1, 3): use the fact that moves are grouped by piece
+            // Mobility score (rules 1, 3): use the fact that moves are grouped by piece
             int currentPieceIndex = -1;
-			int currentMoveCount = 0;
+            int currentMoveCount = 0;
             var FlushMobilityScore = () => positionalScore += (int)Math.Sqrt(10000 * currentMoveCount); // 100 * sqrt(numMoves)
             foreach (Move move in board.GetLegalMoves())
-			{
+            {
                 if (move.MovePieceType == PAWN || move.IsCastles)
-				{
+                {
                     continue;
-				}
-				int fromIndex = move.StartSquare.Index;
+                }
+                int fromIndex = move.StartSquare.Index;
                 if (fromIndex != currentPieceIndex && currentPieceIndex != -1)
-				{
+                {
                     FlushMobilityScore();
                     currentMoveCount = 0;
                 }
@@ -156,7 +155,7 @@ public class MyBot : IChessBot
             // Piece safety (rule 2)
             var AddPieceSafetyScoreNonPawn = (PieceType pieceType) =>
             {
-                foreach (var piece in board.GetPieceList(pieceType, board.IsWhiteToMove))
+                foreach (var piece in PiecesOfPlayerToMove(pieceType))
                 {
                     int index = piece.Square.Index;
                     int defenders = nonPawnDefenders[index] + pawnDefenders[index];
@@ -168,7 +167,7 @@ public class MyBot : IChessBot
             AddPieceSafetyScoreNonPawn(KNIGHT);
 
             // Pawn credit (rule 6)
-            foreach (var piece in board.GetPieceList(PAWN, board.IsWhiteToMove))
+            foreach (var piece in PiecesOfPlayerToMove(PAWN))
             {
                 Square square = piece.Square;
                 positionalScore += (board.IsWhiteToMove ? square.Rank - 1 : 6 - square.Rank) * 20; // 0.2 points for each rank advanced
@@ -177,7 +176,6 @@ public class MyBot : IChessBot
 
             return positionalScore;
         };
-
         int whiteMultiplier = board.IsWhiteToMove ? 1 : -1;
         int scoreCp = AddMaterialScoreForColor(true, whiteMultiplier)
             + AddMaterialScoreForColor(false, -whiteMultiplier)
@@ -189,14 +187,44 @@ public class MyBot : IChessBot
     }
 
     private int[] NumberOfNonPawnDefenders()
-	{
-        // TODO
-        return new int[64];
-	}
+    {
+        var defenders = new int[64];
+        var AddDefendersForPiece = (PieceType pieceType) =>
+        {
+            foreach (Piece piece in PiecesOfPlayerToMove(pieceType))
+            {
+                ulong bitboard = BitboardHelper.GetPieceAttacks(pieceType, piece.Square, board, true /* not used */);
+                while (bitboard != 0)
+                {
+                    int index = BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard);
+                    defenders[index]++;
+                }
+            }
+        };
+        AddDefendersForPiece(KNIGHT);
+        AddDefendersForPiece(BISHOP);
+        AddDefendersForPiece(ROOK);
+        AddDefendersForPiece(QUEEN);
+        return defenders;
+    }
 
     private int[] NumberOfPawnDefenders()
     {
-        // TODO
-        return new int[64];
+        var defenders = new int[64];
+        foreach (Piece pawn in PiecesOfPlayerToMove(PAWN))
+        {
+            ulong bitboard = BitboardHelper.GetPawnAttacks(pawn.Square, board.IsWhiteToMove);
+            while (bitboard != 0)
+            {
+                int index = BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard);
+                defenders[index]++;
+            }
+        }
+        return defenders;
+    }
+
+    private PieceList PiecesOfPlayerToMove(PieceType pieceType)
+    {
+        return board.GetPieceList(pieceType, board.IsWhiteToMove);
     }
 }

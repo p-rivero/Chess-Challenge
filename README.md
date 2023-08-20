@@ -14,6 +14,26 @@ There are some open-source implementations of *Turochamp* available on [GitHub](
 
 - Quiescence search is used to avoid the horizon effect. This improvement was already present in the original *Turochamp* algorithm.
 
+- Rule 7 of the original algorithm (*"Add 1.0 point for the threat of mate and 0.5 point for a check."*) is not implemented, since it doesn't make sense in the context of a modern minimax or Alpha-Beta framework. The existing open-source implementations of *Turochamp* also do not agree on how to interpret this rule and most of them ignore it or implement it incorrectly.
+
+- Rule 5 is also ambiguous: *"Add 1.0 point for the possibility of still being able to castle on a later move if a King or Rook move is being considered; add another point if castling can take place on the next move; finally add one more point for actually castling."*.
+
+  The main parts that don't make sense in a minimax algorithm are:
+  
+  - *"if a King or Rook **move** is being considered"*: the minimax/alphabeta search evaluates **positions** at each leaf node, without knowing which **moves** took us there (this is the reason transposition tables are even possible).
+  - *"add one more point for **actually castling**"*: again, we are evaluating positions, not moves. [Artificial castling](https://en.wikipedia.org/wiki/Castling#Artificial_castling) is equally valid and should not be penalized. Also, when the game starts from a FEN position, we literally can't know if we actually castled or just moved the king and rook.
+  
+  Since it doesn't make sense to add points based on the moves that led to the current position, I decided to interpret this rule as follows:
+  
+  - First, all the other positional rules (except 7) are computed on each leaf node for both the player (positive score) and the opponent (negative score).
+  - The material score is also added on each leaf node for both players, as is standard in a minimax/alphabeta search.
+  - Then, use alpha-beta to score each top-level move (i.e. each move of the root node).
+  - Before returning the best move, apply extra points to the moves according to Rule 5.
+  
+  In other words, castling incentives are applied *only at the root node*, in order to slightly boost some top-level moves.
+  
+  *Note:* The existing implementations seem to agree that, for a castling move, the extra points do stack (i.e. a castling move is awarded 3 points, even though we can't castle on the next move or any future moves). This seems like the most reasonable interpretation, even though the wording of the rule is very ambiguous.
+
 ## Strategies used to reduce code size
 
 - Use `var` instead of explicit type declarations for generic types.

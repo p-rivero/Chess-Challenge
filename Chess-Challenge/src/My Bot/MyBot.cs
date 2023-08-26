@@ -74,7 +74,7 @@ public class MyBot : IChessBot
 
                 if (score >= beta)
                 {
-                    historyHeuristic[PlayerToMoveIndex, move.StartSquare.Index, move.TargetSquare.Index] += depth * depth;
+                    historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index] += depth * depth;
                     return beta;
                 }
             }
@@ -175,7 +175,7 @@ public class MyBot : IChessBot
             AddPieceSafetyScoreNonPawn(KNIGHT);
 
             // King safety (rule 4)
-            currentMoveCount = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetSliderAttacks(QUEEN, board.GetKingSquare(board.IsWhiteToMove), board));
+            currentMoveCount = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetSliderAttacks(QUEEN, board.GetKingSquare(IsWhiteToMove), board));
             positionalScore -= FlushMobilityScore();
 
 
@@ -183,7 +183,7 @@ public class MyBot : IChessBot
             ForEachPieceOfPlayerToMove(PAWN, piece =>
             {
                 Square square = piece.Square;
-                positionalScore += (board.IsWhiteToMove ? square.Rank - 1 : 6 - square.Rank) * 20; // 0.2 points for each rank advanced
+                positionalScore += (IsWhiteToMove ? square.Rank - 1 : 6 - square.Rank) * 20; // 0.2 points for each rank advanced
                 positionalScore += nonPawnDefenders[square.Index] > 0 ? 30 : 0; // 0.3 points if defended by a non-pawn
             });
 
@@ -191,7 +191,7 @@ public class MyBot : IChessBot
 
             return positionalScore;
         };
-        int scoreCp = MaterialScoreForColor(board.IsWhiteToMove) - MaterialScoreForColor(!board.IsWhiteToMove) + PositionalScoreForCurrentPlayer();
+        int scoreCp = MaterialScoreForColor(IsWhiteToMove) - MaterialScoreForColor(!IsWhiteToMove) + PositionalScoreForCurrentPlayer();
         board.ForceSkipTurn();
         scoreCp -= PositionalScoreForCurrentPlayer();
         board.UndoSkipTurn();
@@ -209,7 +209,7 @@ public class MyBot : IChessBot
 
         // We don't need to play the move, this function is called from AlphaBetaSearch when the move has already been played
 
-        bool playerOfMove = !board.IsWhiteToMove; // Currently it's the opponent's turn
+        bool playerOfMove = !IsWhiteToMove; // Currently it's the opponent's turn
         if (!board.HasKingsideCastleRight(playerOfMove) && !board.HasKingsideCastleRight(playerOfMove))
         {
             // Since IsCastles = false, this move loses castling rights (and it must have been a king or rook move).
@@ -268,7 +268,7 @@ public class MyBot : IChessBot
         var defenders = new int[64];
         ForEachPieceOfPlayerToMove(PAWN, pawn =>
         {
-            ulong bitboard = BitboardHelper.GetPawnAttacks(pawn.Square, board.IsWhiteToMove);
+            ulong bitboard = BitboardHelper.GetPawnAttacks(pawn.Square, IsWhiteToMove);
             while (bitboard != 0)
             {
                 int index = BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard);
@@ -280,13 +280,13 @@ public class MyBot : IChessBot
 
     private void ForEachPieceOfPlayerToMove(PieceType pieceType, Action<Piece> callback)
     {
-        foreach (Piece piece in board.GetPieceList(pieceType, board.IsWhiteToMove))
+        foreach (Piece piece in board.GetPieceList(pieceType, IsWhiteToMove))
         {
             callback(piece);
         }
     }
 
-    private int PlayerToMoveIndex => board.IsWhiteToMove ? 0 : 1;
+    private bool IsWhiteToMove => board.IsWhiteToMove;
 
     private IEnumerable<Move> OrderMoves(Move[] moves) => 
         moves.Select(move =>
@@ -300,7 +300,7 @@ public class MyBot : IChessBot
             {
                 score -= 50;
             }
-            score += historyHeuristic[PlayerToMoveIndex, move.StartSquare.Index, move.TargetSquare.Index];
+            score += historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index];
 
             return (move, score);
         }

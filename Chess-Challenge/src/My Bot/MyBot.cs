@@ -53,7 +53,7 @@ public class MyBot : IChessBot
 
         if (board.IsInCheckmate())
         {
-            return -100000 + startDepth - depth;
+            return startDepth - depth - 100000;
         }
 
         if (board.IsDraw())
@@ -234,12 +234,19 @@ public class MyBot : IChessBot
 
     private int TurochampPieceMaterialValue(PieceType pieceType) => pieceType switch
     {
-        // TODO: larger scores
+        // Original Turochamp material values:
         PAWN => 100,
         KNIGHT => 300,
         BISHOP => 350,
         ROOK => 500,
         QUEEN => 1000,
+
+        // Adjusted material values:
+        //PAWN => 200,
+        //KNIGHT => 600,
+        //BISHOP => 700,
+        //ROOK => 1000,
+        //QUEEN => 2000,
         _ => 0,
     };
 

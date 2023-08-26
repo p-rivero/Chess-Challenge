@@ -74,7 +74,7 @@ public class MyBot : IChessBot
 
                 if (score >= beta)
                 {
-                    historyHeuristic[board.IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index] += depth * depth;
+                    historyHeuristic[PlayerToMoveIndex, move.StartSquare.Index, move.TargetSquare.Index] += depth * depth;
                     return beta;
                 }
             }
@@ -164,14 +164,12 @@ public class MyBot : IChessBot
 
             // Piece safety (rule 2)
             var AddPieceSafetyScoreNonPawn = (PieceType pieceType) =>
-            {
-                foreach (var piece in PiecesOfPlayerToMove(pieceType))
+                ForEachPieceOfPlayerToMove(pieceType, piece =>
                 {
                     int index = piece.Square.Index;
                     int defenders = nonPawnDefenders[index] + pawnDefenders[index];
                     positionalScore += defenders > 1 ? 150 : defenders > 0 ? 100 : 0; // 1 point if defended, 1.5 points if defended 2+ times
-                }
-            };
+                });
             AddPieceSafetyScoreNonPawn(ROOK);
             AddPieceSafetyScoreNonPawn(BISHOP);
             AddPieceSafetyScoreNonPawn(KNIGHT);
@@ -182,12 +180,12 @@ public class MyBot : IChessBot
 
 
             // Pawn credit (rule 6)
-            foreach (var piece in PiecesOfPlayerToMove(PAWN))
+            ForEachPieceOfPlayerToMove(PAWN, piece =>
             {
                 Square square = piece.Square;
                 positionalScore += (board.IsWhiteToMove ? square.Rank - 1 : 6 - square.Rank) * 20; // 0.2 points for each rank advanced
                 positionalScore += nonPawnDefenders[square.Index] > 0 ? 30 : 0; // 0.3 points if defended by a non-pawn
-            }
+            });
 
             // Mates and checks (rule 7) is not implemented (see README.md)
 
@@ -234,27 +232,22 @@ public class MyBot : IChessBot
         return 100;
     }
 
-    private int TurochampPieceMaterialValue(PieceType pieceType)
+    private int TurochampPieceMaterialValue(PieceType pieceType) => pieceType switch
     {
-        switch (pieceType)
-        {
-            // TODO: larger scores
-            case PAWN: return 100;
-            case KNIGHT: return 300;
-            case BISHOP: return 350;
-            case ROOK: return 500;
-            case QUEEN: return 1000;
-        }
-        return 0;
-    }
-
+        // TODO: larger scores
+        PAWN => 100,
+        KNIGHT => 300,
+        BISHOP => 350,
+        ROOK => 500,
+        QUEEN => 1000,
+        _ => 0,
+    };
 
     private int[] NumberOfNonPawnDefenders()
     {
         var defenders = new int[64];
         var AddDefendersForPiece = (PieceType pieceType) =>
-        {
-            foreach (Piece piece in PiecesOfPlayerToMove(pieceType))
+            ForEachPieceOfPlayerToMove(pieceType, piece =>
             {
                 ulong bitboard = BitboardHelper.GetPieceAttacks(pieceType, piece.Square, board, true /* not used */);
                 while (bitboard != 0)
@@ -262,8 +255,7 @@ public class MyBot : IChessBot
                     int index = BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard);
                     defenders[index]++;
                 }
-            }
-        };
+            });
         AddDefendersForPiece(KNIGHT);
         AddDefendersForPiece(BISHOP);
         AddDefendersForPiece(ROOK);
@@ -274,7 +266,7 @@ public class MyBot : IChessBot
     private int[] NumberOfPawnDefenders()
     {
         var defenders = new int[64];
-        foreach (Piece pawn in PiecesOfPlayerToMove(PAWN))
+        ForEachPieceOfPlayerToMove(PAWN, pawn =>
         {
             ulong bitboard = BitboardHelper.GetPawnAttacks(pawn.Square, board.IsWhiteToMove);
             while (bitboard != 0)
@@ -282,35 +274,36 @@ public class MyBot : IChessBot
                 int index = BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard);
                 defenders[index]++;
             }
-        }
+        });
         return defenders;
     }
 
-    private PieceList PiecesOfPlayerToMove(PieceType pieceType)
+    private void ForEachPieceOfPlayerToMove(PieceType pieceType, Action<Piece> callback)
     {
-        return board.GetPieceList(pieceType, board.IsWhiteToMove);
+        foreach (Piece piece in board.GetPieceList(pieceType, board.IsWhiteToMove))
+        {
+            callback(piece);
+        }
     }
 
+    private int PlayerToMoveIndex => board.IsWhiteToMove ? 0 : 1;
 
-
-    private IEnumerable<Move> OrderMoves(Move[] moves)
-    {
-        return moves.Select(move =>
+    private IEnumerable<Move> OrderMoves(Move[] moves) => 
+        moves.Select(move =>
+        {
+            int score = 0;
+            if (move.IsCapture)
             {
-                int score = 0;
-                if (move.IsCapture)
-                {
-                    score += 100000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);
-                }
-                if (board.SquareIsAttackedByOpponent(move.TargetSquare))
-                {
-                    score -= 50;
-                }
-                score += historyHeuristic[board.IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index];
-
-                return (move, score);
+                score += 100000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);
             }
+            if (board.SquareIsAttackedByOpponent(move.TargetSquare))
+            {
+                score -= 50;
+            }
+            score += historyHeuristic[PlayerToMoveIndex, move.StartSquare.Index, move.TargetSquare.Index];
+
+            return (move, score);
+        }
         ).OrderByDescending(x => x.score).Select(x => x.move);
-    }
 }
 

@@ -65,10 +65,7 @@ public class MyBot : IChessBot
         {
             board.MakeMove(move);
             int score = -AlphaBetaSearch(depth - 1, -beta, -alpha);
-            if (depth == startDepth)
-            {
-                score += TurochampCastlingIncentives(move);
-            }
+            int castlingIncentives = depth == startDepth ? TurochampCastlingIncentives(move) : 0;
             board.UndoMove(move);
 
             if (score > alpha)
@@ -82,6 +79,7 @@ public class MyBot : IChessBot
                 }
             }
 
+            score += castlingIncentives;
             if (depth == startDepth && score > bestScore)
             {
                 bestScore = score;
@@ -146,7 +144,7 @@ public class MyBot : IChessBot
             // Mobility score (rules 1, 3): use the fact that moves are grouped by piece
             int currentPieceIndex = -1;
             int currentMoveCount = 0;
-            var FlushMobilityScore = () => positionalScore += (int)Math.Sqrt(10000 * currentMoveCount); // 100 * sqrt(numMoves)
+            var FlushMobilityScore = () => (int)Math.Sqrt(10000 * currentMoveCount); // 100 * sqrt(numMoves)
             foreach (Move move in board.GetLegalMoves())
             {
                 if (move.MovePieceType == PAWN || move.IsCastles)
@@ -156,13 +154,13 @@ public class MyBot : IChessBot
                 int fromIndex = move.StartSquare.Index;
                 if (fromIndex != currentPieceIndex && currentPieceIndex != -1)
                 {
-                    FlushMobilityScore();
+                    positionalScore += FlushMobilityScore();
                     currentMoveCount = 0;
                 }
                 currentMoveCount += move.IsCapture ? 2 : 1;
                 currentPieceIndex = fromIndex;
             }
-            FlushMobilityScore();
+            positionalScore += FlushMobilityScore();
 
             // Piece safety (rule 2)
             var AddPieceSafetyScoreNonPawn = (PieceType pieceType) =>
@@ -180,7 +178,7 @@ public class MyBot : IChessBot
 
             // King safety (rule 4)
             currentMoveCount = BitboardHelper.GetNumberOfSetBits(BitboardHelper.GetSliderAttacks(QUEEN, board.GetKingSquare(board.IsWhiteToMove), board));
-            FlushMobilityScore();
+            positionalScore -= FlushMobilityScore();
 
 
             // Pawn credit (rule 6)
@@ -240,6 +238,7 @@ public class MyBot : IChessBot
     {
         switch (pieceType)
         {
+            // TODO: larger scores
             case PAWN: return 100;
             case KNIGHT: return 300;
             case BISHOP: return 350;

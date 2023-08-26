@@ -128,16 +128,16 @@ public class MyBot : IChessBot
 
     private int TurochampEvaluate()
     {
-        var AddMaterialScoreForColor = (bool whiteColor, int multiplier) =>
+        var MaterialScoreForColor = (bool whiteColor) =>
         {
-            var AddMaterialScoreForPiece = (PieceType pieceType) => board.GetPieceList(pieceType, whiteColor).Count * TurochampPieceMaterialValue(pieceType) * multiplier;
-            return AddMaterialScoreForPiece(PAWN)
-                + AddMaterialScoreForPiece(KNIGHT)
-                + AddMaterialScoreForPiece(BISHOP)
-                + AddMaterialScoreForPiece(ROOK)
-                + AddMaterialScoreForPiece(QUEEN);
+            var MaterialScoreForPiece = (PieceType pieceType) => board.GetPieceList(pieceType, whiteColor).Count * TurochampPieceMaterialValue(pieceType);
+            return MaterialScoreForPiece(PAWN)
+                + MaterialScoreForPiece(KNIGHT)
+                + MaterialScoreForPiece(BISHOP)
+                + MaterialScoreForPiece(ROOK)
+                + MaterialScoreForPiece(QUEEN);
         };
-        var AddPositionalScoreForCurrentPlayer = () =>
+        var PositionalScoreForCurrentPlayer = () =>
         {
             int positionalScore = 0;
             var nonPawnDefenders = NumberOfNonPawnDefenders();
@@ -195,12 +195,9 @@ public class MyBot : IChessBot
 
             return positionalScore;
         };
-        int whiteMultiplier = board.IsWhiteToMove ? 1 : -1;
-        int scoreCp = AddMaterialScoreForColor(true, whiteMultiplier)
-            + AddMaterialScoreForColor(false, -whiteMultiplier)
-            + AddPositionalScoreForCurrentPlayer();
+        int scoreCp = MaterialScoreForColor(board.IsWhiteToMove) - MaterialScoreForColor(!board.IsWhiteToMove) + PositionalScoreForCurrentPlayer();
         board.ForceSkipTurn();
-        scoreCp -= AddPositionalScoreForCurrentPlayer();
+        scoreCp -= PositionalScoreForCurrentPlayer();
         board.UndoSkipTurn();
         return scoreCp;
     }

@@ -72,8 +72,8 @@ public class MyBot : IChessBot
         foreach (Move move in OrderMoves(board.GetLegalMoves()))
         {
             board.MakeMove(move);
-            int score = -AlphaBetaSearch(depth - 1, -beta, -alpha);
-            int castlingIncentives = depth == startDepth ? TurochampCastlingIncentives(move) : 0;
+            int score = -AlphaBetaSearch(depth - 1, -beta, -alpha),
+                castlingIncentives = depth == startDepth ? TurochampCastlingIncentives(move) : 0;
             board.UndoMove(move);
 
             if (score > alpha)
@@ -117,8 +117,7 @@ public class MyBot : IChessBot
             if (score >= beta)
                 return beta;
 
-            if (score > alpha)
-                alpha = score;
+            alpha = Math.Max(alpha, score);
         }
         return alpha;
     }
@@ -248,38 +247,31 @@ public class MyBot : IChessBot
         _ => 0,
     };
 
+    private void AddDefendersForPiece(PieceType pieceType, ref int[] defenders)
+    {
+        foreach (Piece piece in board.GetPieceList(pieceType, IsWhiteToMove))
+        {
+            ulong bitboard = BitboardHelper.GetPieceAttacks(pieceType, piece.Square, board, IsWhiteToMove);
+            while (bitboard != 0)
+                defenders[BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard)]++;
+        }
+    }
+    
     private int[] NumberOfNonPawnDefenders()
     {
         var defenders = new int[64];
-        var AddDefendersForPiece = (PieceType pieceType) =>
-            ForEachPieceOfPlayerToMove(pieceType, piece =>
-            {
-                ulong bitboard = BitboardHelper.GetPieceAttacks(pieceType, piece.Square, board, true /* not used */);
-                while (bitboard != 0)
-                {
-                    int index = BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard);
-                    defenders[index]++;
-                }
-            });
-        AddDefendersForPiece(KNIGHT);
-        AddDefendersForPiece(BISHOP);
-        AddDefendersForPiece(ROOK);
-        AddDefendersForPiece(QUEEN);
+        var AddDefenders = (PieceType pieceType) => AddDefendersForPiece(pieceType, ref defenders);
+        AddDefenders(KNIGHT);
+        AddDefenders(BISHOP);
+        AddDefenders(ROOK);
+        AddDefenders(QUEEN);
         return defenders;
     }
 
     private int[] NumberOfPawnDefenders()
     {
         var defenders = new int[64];
-        ForEachPieceOfPlayerToMove(PAWN, pawn =>
-        {
-            ulong bitboard = BitboardHelper.GetPawnAttacks(pawn.Square, IsWhiteToMove);
-            while (bitboard != 0)
-            {
-                int index = BitboardHelper.ClearAndGetIndexOfLSB(ref bitboard);
-                defenders[index]++;
-            }
-        });
+        AddDefendersForPiece(PAWN, ref defenders);
         return defenders;
     }
 

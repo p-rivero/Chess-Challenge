@@ -28,12 +28,12 @@ public class MyBot : IChessBot
         {
             for (startDepth = 1; ; startDepth++)
             {
-                bestScore = -999999;
+                bestScore = -999_999;
                 alphabetaNodes = 0; // #DEBUG
                 quiescenceNodes = 0; // #DEBUG
                 historyHeuristic = new int[2, 64, 64];
 
-                int score = AlphaBetaSearch(startDepth, -999999, 999999);
+                int score = AlphaBetaSearch(startDepth, -999_999, 999_999);
                 bestMoveConfirmed = bestMoveUnconfirmed;
 
                 Console.WriteLine("Depth {2}: {0} (score = {1})", bestMoveConfirmed, score, startDepth); // #DEBUG
@@ -43,7 +43,7 @@ public class MyBot : IChessBot
                 Console.WriteLine(); // #DEBUG
 
 				// Stop searching when checkmate is found
-				if (score > 90000)
+				if (score > 90_000)
                     return bestMoveConfirmed;
 			}
         }
@@ -61,12 +61,15 @@ public class MyBot : IChessBot
         alphabetaNodes++; // #DEBUG
 
         if (board.IsInCheckmate())
-            return startDepth - depth - 100000;
+            return startDepth - depth - 100_000;
 
         if (board.IsDraw())
             return 0;
 
-        if (depth == 4 && timer.MillisecondsElapsedThisTurn > 1000)
+        if (depth == 4 && timer.MillisecondsElapsedThisTurn > (
+            // With more than 20 seconds left, think for 1 second. Otherwise, think for 0.5 seconds.
+            timer.MillisecondsRemaining > 20_000 ? 1000 : 500
+        ))
             throw new Exception();
 
         foreach (Move move in OrderMoves(board.GetLegalMoves()))
@@ -144,7 +147,7 @@ public class MyBot : IChessBot
             // Mobility score (rules 1, 3): use the fact that moves are grouped by piece
             int currentPieceIndex = -1,
                 currentMoveCount = 0;
-            var FlushMobilityScore = () => (int)Math.Sqrt(10000 * currentMoveCount); // 100 * sqrt(numMoves)
+            var FlushMobilityScore = () => (int)Math.Sqrt(10_000 * currentMoveCount); // 100 * sqrt(numMoves)
             foreach (Move move in board.GetLegalMoves())
             {
                 if (move.MovePieceType == PAWN || move.IsCastles)
@@ -290,7 +293,7 @@ public class MyBot : IChessBot
         {
             int score = HistoryHeuristicRef(move);
             if (move.IsCapture)
-                score += 100000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);
+                score += 100_000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);
 
             if (board.SquareIsAttackedByOpponent(move.TargetSquare))
                 score -= 50;

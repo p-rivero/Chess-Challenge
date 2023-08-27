@@ -77,9 +77,9 @@ public class MyBot : IChessBot
         }
 
         if (depth == 4 && timer.MillisecondsElapsedThisTurn > 1000)
-		{
-			throw new Exception();
-		}
+        {
+            throw new Exception();
+        }
 
         foreach (Move move in OrderMoves(board.GetLegalMoves()))
         {
@@ -94,7 +94,7 @@ public class MyBot : IChessBot
 
                 if (score >= beta)
                 {
-                    historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index] += depth * depth;
+                    HistoryHeuristicRef(move) += depth * depth;
                     return beta;
                 }
                 
@@ -315,10 +315,12 @@ public class MyBot : IChessBot
 
     private bool IsWhiteToMove => board.IsWhiteToMove;
 
+    private ref int HistoryHeuristicRef(Move move) => ref historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index];
+
     private IEnumerable<Move> OrderMoves(Move[] moves) => 
         moves.Select(move =>
         {
-            int score = historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index];
+            int score = HistoryHeuristicRef(move);
             if (move.IsCapture)
             {
                 score += 100000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);

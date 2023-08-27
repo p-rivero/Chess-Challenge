@@ -5,20 +5,18 @@ using System.Linq;
 
 public class MyBot : IChessBot
 {
-    private const PieceType PAWN = PieceType.Pawn;
-    private const PieceType KNIGHT = PieceType.Knight;
-    private const PieceType BISHOP = PieceType.Bishop;
-    private const PieceType ROOK = PieceType.Rook;
-    private const PieceType QUEEN = PieceType.Queen;
+    private const PieceType 
+        PAWN = PieceType.Pawn, 
+        KNIGHT = PieceType.Knight, 
+        BISHOP = PieceType.Bishop, 
+        ROOK = PieceType.Rook, 
+        QUEEN = PieceType.Queen;
 
     private Board board;
-    private Move bestMoveUnconfirmed;
-    private Move bestMoveConfirmed;
-    private int bestScore;
+    private Move bestMoveUnconfirmed, bestMoveConfirmed;
+    private int bestScore, startDepth;
     private Timer timer;
-    private int startDepth;
-    private int alphabetaNodes; // #DEBUG
-    private int quiescenceNodes; // #DEBUG
+    private int alphabetaNodes, quiescenceNodes; // #DEBUG
     private int[,,] historyHeuristic;
 
     public Move Think(Board boardIn, Timer timerIn)
@@ -44,12 +42,10 @@ public class MyBot : IChessBot
                 Console.WriteLine("  Quiescence: {0}", quiescenceNodes); // #DEBUG
                 Console.WriteLine(); // #DEBUG
 
-                // Stop searching when checkmate is found
-                if (Math.Abs(score) > 90000)
-                {
+				// Stop searching when checkmate is found
+				if (score > 90000)
                     return bestMoveConfirmed;
-                }
-            }
+			}
         }
         catch (Exception)
         {
@@ -60,26 +56,18 @@ public class MyBot : IChessBot
     private int AlphaBetaSearch(int depth, int alpha, int beta)
     {
         if (depth == 0)
-        {
             return QuiescenceSearch(alpha, beta);
-        }
 
         alphabetaNodes++; // #DEBUG
 
         if (board.IsInCheckmate())
-        {
             return startDepth - depth - 100000;
-        }
 
         if (board.IsDraw())
-        {
             return 0;
-        }
 
         if (depth == 4 && timer.MillisecondsElapsedThisTurn > 1000)
-        {
             throw new Exception();
-        }
 
         foreach (Move move in OrderMoves(board.GetLegalMoves()))
         {
@@ -115,14 +103,10 @@ public class MyBot : IChessBot
         int standScore = TurochampEvaluate();
 
         if (standScore >= beta)
-        {
             return beta;
-        }
 
         if (standScore > alpha)
-        {
             alpha = standScore;
-        }
 
         foreach (Move move in OrderMoves(board.GetLegalMoves(true)))
         {
@@ -131,14 +115,10 @@ public class MyBot : IChessBot
             board.UndoMove(move);
 
             if (score >= beta)
-            {
                 return beta;
-            }
 
             if (score > alpha)
-            {
                 alpha = score;
-            }
         }
         return alpha;
     }
@@ -146,7 +126,7 @@ public class MyBot : IChessBot
 
     private int TurochampEvaluate()
     {
-        var MaterialScoreForColor = (bool whiteColor) =>
+        int MaterialScoreForColor(bool whiteColor)
         {
             var MaterialScoreForPiece = (PieceType pieceType) => board.GetPieceList(pieceType, whiteColor).Count * TurochampPieceMaterialValue(pieceType);
             return MaterialScoreForPiece(PAWN)
@@ -154,23 +134,23 @@ public class MyBot : IChessBot
                 + MaterialScoreForPiece(BISHOP)
                 + MaterialScoreForPiece(ROOK)
                 + MaterialScoreForPiece(QUEEN);
-        };
-        var PositionalScoreForCurrentPlayer = () =>
+        }
+
+        int PositionalScoreForCurrentPlayer()
         {
             int positionalScore = 0;
             var nonPawnDefenders = NumberOfNonPawnDefenders();
             var pawnDefenders = NumberOfPawnDefenders();
 
             // Mobility score (rules 1, 3): use the fact that moves are grouped by piece
-            int currentPieceIndex = -1;
-            int currentMoveCount = 0;
+            int currentPieceIndex = -1,
+                currentMoveCount = 0;
             var FlushMobilityScore = () => (int)Math.Sqrt(10000 * currentMoveCount); // 100 * sqrt(numMoves)
             foreach (Move move in board.GetLegalMoves())
             {
                 if (move.MovePieceType == PAWN || move.IsCastles)
-                {
                     continue;
-                }
+
                 int fromIndex = move.StartSquare.Index;
                 if (fromIndex != currentPieceIndex && currentPieceIndex != -1)
                 {
@@ -183,13 +163,15 @@ public class MyBot : IChessBot
             positionalScore += FlushMobilityScore();
 
             // Piece safety (rule 2)
-            var AddPieceSafetyScoreNonPawn = (PieceType pieceType) =>
+            void AddPieceSafetyScoreNonPawn(PieceType pieceType)
+			{
                 ForEachPieceOfPlayerToMove(pieceType, piece =>
                 {
-                    int index = piece.Square.Index;
-                    int defenders = nonPawnDefenders[index] + pawnDefenders[index];
+                    int index = piece.Square.Index,
+                        defenders = nonPawnDefenders[index] + pawnDefenders[index];
                     positionalScore += defenders > 1 ? 150 : defenders > 0 ? 100 : 0; // 1 point if defended, 1.5 points if defended 2+ times
                 });
+			}
             AddPieceSafetyScoreNonPawn(ROOK);
             AddPieceSafetyScoreNonPawn(BISHOP);
             AddPieceSafetyScoreNonPawn(KNIGHT);
@@ -203,14 +185,15 @@ public class MyBot : IChessBot
             ForEachPieceOfPlayerToMove(PAWN, piece =>
             {
                 Square square = piece.Square;
-                positionalScore += (IsWhiteToMove ? square.Rank - 1 : 6 - square.Rank) * 20; // 0.2 points for each rank advanced
-                positionalScore += nonPawnDefenders[square.Index] > 0 ? 30 : 0; // 0.3 points if defended by a non-pawn
+                positionalScore += (IsWhiteToMove ? square.Rank - 1 : 6 - square.Rank) * 20 // 0.2 points for each rank advanced
+                                + (nonPawnDefenders[square.Index] > 0 ? 30 : 0); // 0.3 points if defended by a non-pawn
             });
 
             // Mates and checks (rule 7) is not implemented (see README.md)
 
             return positionalScore;
-        };
+        }
+
         int scoreCp = MaterialScoreForColor(IsWhiteToMove) - MaterialScoreForColor(!IsWhiteToMove) + PositionalScoreForCurrentPlayer();
         board.ForceSkipTurn();
         scoreCp -= PositionalScoreForCurrentPlayer();
@@ -221,32 +204,27 @@ public class MyBot : IChessBot
     private int TurochampCastlingIncentives(Move move)
     {
         // Castling (rule 5)
-        if (move.IsCastles)
-        {
-            // Existing implementations do stack the modifiers. See README.md
-            return 300;
-        }
-
         // We don't need to play the move, this function is called from AlphaBetaSearch when the move has already been played
+
+        // Existing implementations do stack the modifiers. See README.md
+        if (move.IsCastles)
+            return 300;
 
         bool playerOfMove = !IsWhiteToMove; // Currently it's the opponent's turn
         if (!board.HasKingsideCastleRight(playerOfMove) && !board.HasKingsideCastleRight(playerOfMove))
-        {
             // Since IsCastles = false, this move loses castling rights (and it must have been a king or rook move).
             // If we had already lost castling rights, this function always returns 0 for all moves, so no move has priority.
             return 0;
-        }
 
         // We can castle. See if we can castle in the next turn
         board.ForceSkipTurn();
         foreach (Move nextMove in board.GetLegalMoves())
-        {
             if (nextMove.IsCastles)
             {
                 board.UndoSkipTurn();
                 return 200;
             }
-        }
+
         // We can castle, but not in the next turn.
         board.UndoSkipTurn();
         return 100;
@@ -308,9 +286,7 @@ public class MyBot : IChessBot
     private void ForEachPieceOfPlayerToMove(PieceType pieceType, Action<Piece> callback)
     {
         foreach (Piece piece in board.GetPieceList(pieceType, IsWhiteToMove))
-        {
             callback(piece);
-        }
     }
 
     private bool IsWhiteToMove => board.IsWhiteToMove;
@@ -322,13 +298,11 @@ public class MyBot : IChessBot
         {
             int score = HistoryHeuristicRef(move);
             if (move.IsCapture)
-            {
                 score += 100000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);
-            }
+
             if (board.SquareIsAttackedByOpponent(move.TargetSquare))
-            {
                 score -= 50;
-            }
+
             return (move, score);
         }
         ).OrderByDescending(x => x.score).Select(x => x.move);

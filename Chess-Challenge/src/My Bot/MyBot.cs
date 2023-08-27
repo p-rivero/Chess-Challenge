@@ -12,34 +12,49 @@ public class MyBot : IChessBot
     private const PieceType QUEEN = PieceType.Queen;
 
     private Board board;
-    private Move bestMove;
+    private Move bestMoveUnconfirmed;
+    private Move bestMoveConfirmed;
     private int bestScore;
+    private Timer timer;
     private int startDepth;
     private int alphabetaNodes; // #DEBUG
     private int quiescenceNodes; // #DEBUG
     private int[,,] historyHeuristic;
 
-    public Move Think(Board board, Timer timer)
+    public Move Think(Board boardIn, Timer timerIn)
     {
-        this.board = board;
+        board = boardIn;
+        timer = timerIn;
 
-        for (startDepth = 1; startDepth <= 4; startDepth++)
+        try
         {
-            bestScore = -999999;
-            alphabetaNodes = 0; // #DEBUG
-            quiescenceNodes = 0; // #DEBUG
-            historyHeuristic = new int[2, 64, 64];
+            for (startDepth = 1; ; startDepth++)
+            {
+                bestScore = -999999;
+                alphabetaNodes = 0; // #DEBUG
+                quiescenceNodes = 0; // #DEBUG
+                historyHeuristic = new int[2, 64, 64];
 
-            int score = AlphaBetaSearch(startDepth, -999999, 999999);
+                int score = AlphaBetaSearch(startDepth, -999999, 999999);
+                bestMoveConfirmed = bestMoveUnconfirmed;
 
-            Console.WriteLine("Depth {2}: {0} (score = {1})", bestMove, score, startDepth); // #DEBUG
-            Console.WriteLine("Nodes:        {0}", alphabetaNodes + quiescenceNodes); // #DEBUG
-            Console.WriteLine("  AlphaBeta:  {0}", alphabetaNodes); // #DEBUG
-            Console.WriteLine("  Quiescence: {0}", quiescenceNodes); // #DEBUG
-            Console.WriteLine(); // #DEBUG
+                Console.WriteLine("Depth {2}: {0} (score = {1})", bestMoveConfirmed, score, startDepth); // #DEBUG
+                Console.WriteLine("Nodes:        {0}", alphabetaNodes + quiescenceNodes); // #DEBUG
+                Console.WriteLine("  AlphaBeta:  {0}", alphabetaNodes); // #DEBUG
+                Console.WriteLine("  Quiescence: {0}", quiescenceNodes); // #DEBUG
+                Console.WriteLine(); // #DEBUG
+
+                // Stop searching when checkmate is found
+                if (Math.Abs(score) > 90000)
+                {
+                    return bestMoveConfirmed;
+                }
+            }
         }
-
-        return bestMove;
+        catch (Exception)
+        {
+            return bestMoveConfirmed;
+        }
     }
 
     private int AlphaBetaSearch(int depth, int alpha, int beta)
@@ -60,6 +75,11 @@ public class MyBot : IChessBot
         {
             return 0;
         }
+
+        if (depth == 4 && timer.MillisecondsElapsedThisTurn > 1000)
+		{
+			throw new Exception();
+		}
 
         foreach (Move move in OrderMoves(board.GetLegalMoves()))
         {
@@ -82,7 +102,7 @@ public class MyBot : IChessBot
                 if (depth == startDepth && score > bestScore)
                 {
                     bestScore = score;
-                    bestMove = move;
+                    bestMoveUnconfirmed = move;
                 }
             }
         }
@@ -298,7 +318,7 @@ public class MyBot : IChessBot
     private IEnumerable<Move> OrderMoves(Move[] moves) => 
         moves.Select(move =>
         {
-            int score = 0;
+            int score = historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index];
             if (move.IsCapture)
             {
                 score += 100000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);
@@ -307,8 +327,6 @@ public class MyBot : IChessBot
             {
                 score -= 50;
             }
-            score += historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index];
-
             return (move, score);
         }
         ).OrderByDescending(x => x.score).Select(x => x.move);

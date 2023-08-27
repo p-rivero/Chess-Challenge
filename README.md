@@ -18,27 +18,35 @@ There are some open-source implementations of *Turochamp* available on [GitHub](
 
 - Rule 5 is also ambiguous: *"Add 1.0 point for the possibility of still being able to castle on a later move if a King or Rook move is being considered; add another point if castling can take place on the next move; finally add one more point for actually castling."*.
 
-  The main parts that don't make sense in a minimax algorithm are:
+  <details>
+  <summary>Expand notes</summary>
   
-  - *"if a King or Rook **move** is being considered"*: the minimax/alphabeta search evaluates **positions** at each leaf node, without knowing which **moves** took us there (this is the reason transposition tables are even possible).
-  - *"add one more point for **actually castling**"*: again, we are evaluating positions, not moves. [Artificial castling](https://en.wikipedia.org/wiki/Castling#Artificial_castling) is equally valid and should not be penalized. Also, when the game starts from a FEN position, we literally can't know if we actually castled or just moved the king and rook.
-  
-  Since it doesn't make sense to add points based on the moves that led to the current position, I decided to interpret this rule as follows:
-  
-  - First, all the other positional rules (except 7) are computed on each leaf node for both the player (positive score) and the opponent (negative score).
-  - The material score is also added on each leaf node for both players, as is standard in a minimax/alphabeta search.
-  - Then, use alpha-beta to score each top-level move (i.e. each move of the root node).
-  - Before returning the best move, apply extra points to the moves according to Rule 5.
-  
-  In other words, castling incentives are applied *only at the root node*, in order to slightly boost some top-level moves.
-  
-  *Note:* The existing implementations seem to agree that, for a castling move, the extra points do stack (i.e. a castling move is awarded 3 points, even though we can't castle on the next move or any future moves). This seems like the most reasonable interpretation, even though the wording of the rule is very ambiguous.
+    **The problem:**
 
-## Strategies used to reduce code size
+    The main parts that don't make sense in a minimax algorithm are:
+    
+    - *"if a King or Rook **move** is being considered"*: the minimax/alphabeta search evaluates **positions** at each leaf node, without knowing which **moves** took us there (this is the reason transposition tables are even possible).
+    - *"add one more point for **actually castling**"*: again, we are evaluating positions, not moves. [Artificial castling](https://en.wikipedia.org/wiki/Castling#Artificial_castling) is equally valid and should not be penalized. Also, when the game starts from a FEN position, we literally can't know if we actually castled or just moved the king and rook.
+    
+    **Proposed solution:**
+    
+    Since it doesn't make sense to add points based on the moves that led to the current position, I decided to interpret this rule as follows:
+    
+    - First, all the other positional rules are computed on each leaf node for both the player (positive score) and the opponent (negative score).
+    - The material score is also added on each leaf node for both players, as is standard in a minimax/alphabeta search.
+    - Then, use alpha-beta to score each top-level move (i.e. each move of the root node).
+    - Before returning the best move, apply extra points to the moves according to Rule 5.
+    
+    In other words, castling incentives are applied *only at the root node*, in order to slightly boost some top-level moves.
 
-- Use `var` instead of explicit type declarations for generic types.
-
-- Use closures (lambdas, anonymous functions) to minimize the number of arguments passed to functions.
+    *Note:* The existing implementations seem to agree that, for a castling move, the extra points do stack (i.e. a castling move is awarded 3 points, even though we can't castle on the next move or any future moves). This seems like the most reasonable interpretation, even though the wording of the rule is very ambiguous.
+    
+    **The "proper" solution:**
+    
+    A proper way to implement castling incentives would be to use piece-square tables, which can also efficiently encode many other positional rules. This would allow us to apply the incentives at every leaf node, regardless of the move that led to it.  
+    Using piece-square tables would greatly improve the strength of the bot, but it would no longer be a faithful recreation of the original algorithm.
+    
+  </details>
 
 ## References
 

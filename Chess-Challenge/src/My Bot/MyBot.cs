@@ -77,13 +77,13 @@ public class MyBot : IChessBot
                     historyHeuristic[IsWhiteToMove ? 0 : 1, move.StartSquare.Index, move.TargetSquare.Index] += depth * depth;
                     return beta;
                 }
-            }
-
-            score += castlingIncentives;
-            if (depth == startDepth && score > bestScore)
-            {
-                bestScore = score;
-                bestMove = move;
+                
+                score += castlingIncentives;
+                if (depth == startDepth && score > bestScore)
+                {
+                    bestScore = score;
+                    bestMove = move;
+                }
             }
         }
         return alpha;

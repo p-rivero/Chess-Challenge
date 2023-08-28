@@ -1,12 +1,44 @@
 # Turing's paper machine
 
 The goal of this project is to reconstruct the first chess-playing program, created by Alan Turing and David Champernowne in 1948, many years before the first computer capable of running it was built.
-Most notably, the entire program is contained in a single file (`Chess-Challenge/src/My Bot/MyBot.cs`), with a size limit of 1024 tokens (as defined in Sebastian Lague's chess coding challenge).
+Most notably, the entire implementation is contained in a single file (`Chess-Challenge/src/My Bot/MyBot.cs`), with a size limit of 1024 tokens (as defined in Sebastian Lague's chess coding challenge).
 
 The algorithm, known as *Turochamp* or *Turing's paper machine*, is considered to be the first computer game ever created, even though it was never actually run on a computer.
 For each move, it reportedly took Turing 15 to 20 minutes to compute the result by hand (with a depth of 3 ply).
 
-There are some open-source implementations of *Turochamp* available on [GitHub](https://github.com/topics/turochamp), as well as the original closed-source recreation by the ChessBase team, which was used as a reference for this reverse-engineering project due to being the closest to the original algorithm.
+Unfortunately, while Turing began implementing the algorithm on a computer in the early 1950s, he never finished it and only left the original paper description of the algorithm.   
+Currently some implementations of *Turochamp* do exist, but none of them seemed satisfactory to me:
+
+- The 2004 implementation by the ChessBase team is closed-source, and the distributed binary uses the proprietary format `.eng`, which is only supported by older 32-bit versions of the Fritz GUI.
+
+- There are 2 open-source implementations of *Turochamp* available on GitHub:
+
+  - [mdoege/PyTuroChamp](https://github.com/mdoege/PyTuroChamp), also bundled as a web app ([mdoege/TUROjs](https://github.com/mdoege/TUROjs)), and translated to nim ([mdoege/nimTUROCHAMP](https://github.com/mdoege/nimTUROCHAMP)).
+  
+  - [ankushChatterjee/turochamp](https://github.com/ankushChatterjee/turochamp), an independent pure JS implementation.
+  
+  However, the engines have major issues that justify this new implementation:
+  
+  - Both engines use floating-point numbers to represent the score, and make a large number of string comparisons. Also, they use a naive implementation of the alpha-beta algoritm, with many flaws such as having separate branches/functions for min and max nodes.  
+    Those 3 design decisions are very inefficient and make the engines much slower than they should be.
+    
+  - Both engines implement incorrectly the rules 5 and 7 of the original algorithm (see [Implementation notes](#implementation-notes) for details). In my experience, when those rules are combined with alpha-beta pruning, the resulting bugs will cause the engine to sometimes return extremely bad moves.
+  
+
+## Engine modes
+
+Since Sebastian Lague's chess coding challenge allows submitting 2 entries, I decided to implement 2 different versions of the engine:
+
+- **Faithful implementation:** This mode limits the search depth to 3 ply, the same depth that Turing used when computing the moves by hand. It also uses the same piece material values as the original algorithm.  
+  This mode is intended to be a faithful recreation of the original algorithm, and is not very strong.
+  
+- **Modern implementation:** This mode attempts to make Turing's algorithm slightly stronger, while still remaining quite faithful to the original algorithm. Instead of a hard depth limit, it searches for some amount of time (depending on the remaining time). The material score of all pieces has been doubled, as this shows a significant improvement in the engine's strength.
+
+By default, the engine uses the modern implementation. The faithful implementation can be enabled by uncommenting the line at the top of the file:
+```c#
+#define FAITHFUL_TUROCHAMP_IMPLEMENTATION
+```
+
 
 ## Implementation notes
 
@@ -14,19 +46,22 @@ There are some open-source implementations of *Turochamp* available on [GitHub](
 
 - Quiescence search is used to avoid the horizon effect. This improvement was already present in the original *Turochamp* algorithm.
 
-- Rule 7 of the original algorithm (*"Add 1.0 point for the threat of mate and 0.5 point for a check."*) is not implemented, since it doesn't make sense in the context of a modern minimax or Alpha-Beta framework. The existing open-source implementations of *Turochamp* also do not agree on how to interpret this rule and most of them ignore it or implement it incorrectly.
+- Rule 7 of the original algorithm (*"Add 1.0 point for the threat of mate and 0.5 point for a check."*) is not implemented, since it doesn't make sense in the context of a modern minimax or Alpha-Beta framework. The existing open-source implementations of *Turochamp* also do not agree on how to interpret this rule and either ignore it or implement it incorrectly.
 
 - Rule 5 is also ambiguous: *"Add 1.0 point for the possibility of still being able to castle on a later move if a King or Rook move is being considered; add another point if castling can take place on the next move; finally add one more point for actually castling."*.
 
   <details>
   <summary>Expand notes</summary>
-  
+    <br>
+    
     **The problem:**
 
     The main parts that don't make sense in a minimax algorithm are:
     
     - *"if a King or Rook **move** is being considered"*: the minimax/alphabeta search evaluates **positions** at each leaf node, without knowing which **moves** took us there (this is the reason transposition tables are even possible).
     - *"add one more point for **actually castling**"*: again, we are evaluating positions, not moves. [Artificial castling](https://en.wikipedia.org/wiki/Castling#Artificial_castling) is equally valid and should not be penalized. Also, when the game starts from a FEN position, we literally can't know if we actually castled or just moved the king and rook.
+    
+    <br>
     
     **Proposed solution:**
     

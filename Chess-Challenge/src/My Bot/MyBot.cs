@@ -14,7 +14,7 @@ public class MyBot : IChessBot
 
     private Board board;
     private Move bestMoveUnconfirmed, bestMoveConfirmed;
-    private int bestScore, startDepth;
+    private int bestScore, startDepth, timeToThink;
     private Timer timer;
     private int alphabetaNodes, quiescenceNodes; // #DEBUG
     private int[,,] historyHeuristic;
@@ -23,6 +23,11 @@ public class MyBot : IChessBot
     {
         board = boardIn;
         timer = timerIn;
+        // With more than 20 seconds left, think for 1 second (~40 moves)
+        // Between 20 and 4 seconds, think for 0.5 seconds (~32 moves)
+        // For the last 4 seconds, think for 0.1 seconds (~40 moves)
+        timeToThink = timer.MillisecondsRemaining > 20_000 ? 1000 : 
+            timer.MillisecondsRemaining > 4_000 ? 500 : 100;
 
         try
         {
@@ -49,6 +54,7 @@ public class MyBot : IChessBot
         }
         catch (Exception)
         {
+            // Timeout, return the previous best move
             return bestMoveConfirmed;
         }
     }
@@ -66,10 +72,7 @@ public class MyBot : IChessBot
         if (board.IsDraw())
             return 0;
 
-        if (depth == 4 && timer.MillisecondsElapsedThisTurn > (
-            // With more than 20 seconds left, think for 1 second. Otherwise, think for 0.5 seconds.
-            timer.MillisecondsRemaining > 20_000 ? 1000 : 500
-        ))
+        if (depth == 3 && timer.MillisecondsElapsedThisTurn > timeToThink)
             throw new Exception();
 
         foreach (Move move in OrderMoves(board.GetLegalMoves()))

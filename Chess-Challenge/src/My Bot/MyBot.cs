@@ -1,4 +1,7 @@
-﻿using ChessChallenge.API;
+﻿
+// #define FAITHFUL_TUROCHAMP_IMPLEMENTATION
+
+using ChessChallenge.API;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,7 +34,11 @@ public class MyBot : IChessBot
 
         try
         {
+#if FAITHFUL_TUROCHAMP_IMPLEMENTATION
+            for (startDepth = 1; startDepth <= 3; startDepth++)
+#else
             for (startDepth = 1; ; startDepth++)
+#endif
             {
                 bestScore = -999_999;
                 alphabetaNodes = 0; // #DEBUG
@@ -55,8 +62,8 @@ public class MyBot : IChessBot
         catch (Exception)
         {
             // Timeout, return the previous best move
-            return bestMoveConfirmed;
         }
+        return bestMoveConfirmed;
     }
 
     private int AlphaBetaSearch(int depth, int alpha, int beta)
@@ -238,19 +245,19 @@ public class MyBot : IChessBot
 
     private int TurochampPieceMaterialValue(PieceType pieceType) => pieceType switch
     {
-        // Original Turochamp material values:
+#if FAITHFUL_TUROCHAMP_IMPLEMENTATION
         PAWN => 100,
         KNIGHT => 300,
         BISHOP => 350,
         ROOK => 500,
         QUEEN => 1000,
-
-        // Adjusted material values:
-        //PAWN => 200,
-        //KNIGHT => 600,
-        //BISHOP => 700,
-        //ROOK => 1000,
-        //QUEEN => 2000,
+#else
+        PAWN => 200,
+        KNIGHT => 600,
+        BISHOP => 700,
+        ROOK => 1000,
+        QUEEN => 2000,
+#endif
         _ => 0,
     };
 

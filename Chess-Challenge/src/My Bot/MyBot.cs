@@ -47,10 +47,10 @@ public class MyBot : IChessBot
                 Console.WriteLine("  Quiescence: {0}", quiescenceNodes); // #DEBUG
                 Console.WriteLine(); // #DEBUG
 
-				// Stop searching when checkmate is found
-				if (score > 90_000)
+                // Stop searching when checkmate is found
+                if (score > 90_000)
                     return bestMoveConfirmed;
-			}
+            }
         }
         catch (Exception)
         {
@@ -72,6 +72,7 @@ public class MyBot : IChessBot
         if (board.IsDraw())
             return 0;
 
+        // Check timeout
         if (depth == 3 && timer.MillisecondsElapsedThisTurn > timeToThink)
             throw new Exception();
 
@@ -169,14 +170,14 @@ public class MyBot : IChessBot
 
             // Piece safety (rule 2)
             void AddPieceSafetyScoreNonPawn(PieceType pieceType)
-			{
+            {
                 ForEachPieceOfPlayerToMove(pieceType, piece =>
                 {
                     int index = piece.Square.Index,
                         defenders = nonPawnDefenders[index] + pawnDefenders[index];
                     positionalScore += defenders > 1 ? 150 : defenders > 0 ? 100 : 0; // 1 point if defended, 1.5 points if defended 2+ times
                 });
-			}
+            }
             AddPieceSafetyScoreNonPawn(ROOK);
             AddPieceSafetyScoreNonPawn(BISHOP);
             AddPieceSafetyScoreNonPawn(KNIGHT);

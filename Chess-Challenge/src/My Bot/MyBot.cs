@@ -297,13 +297,17 @@ public class MyBot : IChessBot
         {
             int score = HistoryHeuristicRef(move);
             if (move.IsCapture)
-                score += 100_000 + TurochampPieceMaterialValue(move.CapturePieceType) - TurochampPieceMaterialValue(move.MovePieceType);
+                score += 100_000 + TurochampPieceMaterialValue(move.CapturePieceType) * 4 - TurochampPieceMaterialValue(move.MovePieceType);
 
             if (board.SquareIsAttackedByOpponent(move.TargetSquare))
                 score -= 50;
 
+            if (move.IsPromotion)
+                score += 10_000;
+
             return (move, score);
-        }
-        ).OrderByDescending(x => x.score).Select(x => x.move);
+        })
+        .OrderByDescending(x => x.score)
+        .Select(x => x.move);
 }
 

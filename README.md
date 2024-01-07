@@ -1,5 +1,12 @@
 # Turing's paper machine
 
+## Update: competition results
+
+This entry was featured in [Sebastian's video](https://youtu.be/Ne40a5LkK6A?t=235) about the competition results.  
+The faithful implementation was ranked 215th out of 626 entries, and the modern implementation was ranked 85th.
+
+---
+
 The goal of this project is to reconstruct the first chess-playing program, created by Alan Turing and David Champernowne in 1948, many years before the first computer capable of running it was built.
 Most notably, the entire implementation is contained in a single file (`Chess-Challenge/src/My Bot/MyBot.cs`), with a size limit of 1024 tokens (as defined in Sebastian Lague's chess coding challenge).
 
